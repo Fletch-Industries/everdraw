@@ -6,6 +6,8 @@
 
 A professional open-source drawing application with blockchain-backed artwork ownership.
 
+Visit the deployed version at: [Everdraw.art](https://everdraw.art)
+
 [![License: Open BSV](https://img.shields.io/badge/License-Open%20BSV-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18-61dafb)](https://reactjs.org/)
