@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+@layer base {
+  :root {
+    --background: 0 0% 8%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 35 92% 55%;
+    --primary-foreground: 0 0% 5%;
+
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 85%;
+
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 55%;
+
+    --accent: 35 92% 55%;
+    --accent-foreground: 0 0% 5%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 35 92% 55%;
+
+    --radius: 0.75rem;
+
+    /* Custom design tokens */
+    --canvas-bg: 0 0% 6%;
+    --toolbar-bg: 0 0% 12%;
+    --toolbar-border: 0 0% 22%;
+    --tool-active: 35 92% 55%;
+    --tool-hover: 0 0% 20%;
+    --glass-bg: 0 0% 12% / 0.85;
+    --glass-border: 0 0% 30% / 0.3;
+    
+    /* Shadows */
+    --shadow-soft: 0 4px 24px -4px hsl(0 0% 0% / 0.5);
+    --shadow-glow: 0 0 20px hsl(35 92% 55% / 0.2);
+    
+    /* Transitions */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 0 0% 8%;
+    --foreground: 0 0% 95%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', sans-serif;
+    touch-action: manipulation;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-[hsl(var(--glass-bg))] backdrop-blur-xl border border-[hsl(var(--glass-border))] rounded-2xl;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .tool-button {
+    @apply p-3 rounded-xl transition-all duration-150 ease-out;
+    @apply hover:bg-[hsl(var(--tool-hover))] active:scale-95;
+  }
+
+  .tool-button-active {
+    @apply bg-primary text-primary-foreground;
+    box-shadow: var(--shadow-glow);
+  }
+
+  .slider-track {
+    @apply h-1 bg-muted rounded-full;
+  }
+
+  .slider-thumb {
+    @apply w-5 h-5 bg-foreground rounded-full shadow-lg cursor-pointer;
+    @apply hover:scale-110 transition-transform;
+  }
+}
+
+/* Vertical slider styling */
+input[type="range"][style*="vertical-lr"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+input[type="range"][style*="vertical-lr"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"][style*="vertical-lr"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+/* Hide scrollbar */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Canvas cursor */
+.canvas-container {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* Smooth animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-smooth) ease-out;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
