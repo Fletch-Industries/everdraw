@@ -1434,8 +1434,13 @@ export const renderStroke = (
     case 'marker':
       renderMarker(ctx, points, strokeColor, size);
       break;
+    default:
+      // New WebGL-era brush types fall back to a plain pen line in the
+      // legacy 2D renderer (used only when WebGL2 is unavailable).
+      renderPen(ctx, points, strokeColor, size);
+      break;
   }
-  
+
   ctx.restore();
 };
 
@@ -1500,7 +1505,10 @@ export const renderStrokeSegment = (
     case 'marker':
       renderMarker(ctx, segmentPoints, strokeColor, size);
       break;
+    default:
+      renderPen(ctx, segmentPoints, strokeColor, size);
+      break;
   }
-  
+
   ctx.restore();
 };

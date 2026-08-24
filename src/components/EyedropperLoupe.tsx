@@ -29,7 +29,11 @@ export const EyedropperLoupe = ({
     const loupeCtx = loupeCanvas.getContext('2d');
     if (!loupeCtx) return;
 
-    const dpr = window.devicePixelRatio || 1;
+    // Derive the backing-store ratio from the canvas itself — the drawing
+    // canvas uses a budgeted DPR that can differ from devicePixelRatio,
+    // which made the loupe magnify the wrong region.
+    const cssWidth = canvasRef.clientWidth || parseFloat(canvasRef.style.width) || canvasRef.width;
+    const dpr = cssWidth > 0 ? canvasRef.width / cssWidth : (window.devicePixelRatio || 1);
     const sourceSize = LOUPE_SIZE / MAGNIFICATION;
 
     // Clear loupe

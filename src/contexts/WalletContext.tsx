@@ -22,18 +22,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [client, setClient] = useState<AuthSigClient | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-connect silently on mount
+  // Auto-connect silently on mount (skipped after an explicit disconnect)
   useEffect(() => {
     const initWallet = async () => {
       try {
         const authClient = new AuthSigClient();
         setClient(authClient);
-        
+
         // Try silent reconnect if previously connected
         try {
+          if (sessionStorage.getItem('wallet-disconnected') === '1') {
+            throw new Error('user disconnected');
+          }
           await authClient.connect();
           const identity = authClient.getIdentity() as string | { identityKey?: string } | null;
-          const identityKey = typeof identity === 'string' ? identity : (identity as any)?.identityKey;
+          const identityKey = typeof identity === 'string' ? identity : identity?.identityKey;
           setPublicKey(identityKey || null);
           setIsConnected(true);
         } catch {
@@ -64,12 +67,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       
       await authClient.connect();
       const identity = authClient.getIdentity() as string | { identityKey?: string } | null;
-      const identityKey = typeof identity === 'string' ? identity : (identity as any)?.identityKey;
+      const identityKey = typeof identity === 'string' ? identity : identity?.identityKey;
       setPublicKey(identityKey || null);
       setIsConnected(true);
       return true;
-    } catch (err: any) {
-      const errorMessage = err?.message || String(err);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       if (errorMessage.includes('not installed') || errorMessage.includes('No wallet')) {
         setError('wallet_not_installed');
       } else {
@@ -77,6 +80,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
       return false;
     } finally {
+      try { sessionStorage.removeItem('wallet-disconnected'); } catch { /* ignore */ }
       setIsConnecting(false);
     }
   }, [client]);
@@ -84,6 +88,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const disconnect = useCallback(() => {
     setIsConnected(false);
     setPublicKey(null);
+    // Remember the choice so the next page load doesn't silently reconnect.
+    try { sessionStorage.setItem('wallet-disconnected', '1'); } catch { /* private mode */ }
   }, []);
 
   return (

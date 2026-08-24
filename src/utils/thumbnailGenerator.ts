@@ -26,8 +26,8 @@ export const generateThumbnail = async (
     thumbWidth = THUMBNAIL_SIZE * aspectRatio;
   }
 
-  canvas.width = thumbWidth;
-  canvas.height = thumbHeight;
+  canvas.width = Math.max(1, Math.round(thumbWidth));
+  canvas.height = Math.max(1, Math.round(thumbHeight));
 
   // Draw background
   ctx.fillStyle = backgroundColor;
@@ -97,8 +97,8 @@ export const generateThumbnailFromCanvas = (
     thumbWidth = THUMBNAIL_SIZE * aspectRatio;
   }
 
-  canvas.width = thumbWidth;
-  canvas.height = thumbHeight;
+  canvas.width = Math.max(1, Math.round(thumbWidth));
+  canvas.height = Math.max(1, Math.round(thumbHeight));
 
   // Draw background
   ctx.fillStyle = backgroundColor;

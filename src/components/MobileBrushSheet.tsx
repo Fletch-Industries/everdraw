@@ -38,8 +38,8 @@ export const MobileBrushSheet = ({
   const [activeTab, setActiveTab] = useState<TabType>('drawing');
   const { allBrushes } = useBrushLibrary();
   
-  const drawingBrushes = brushes.filter(b => b.category === 'drawing');
-  const paintingBrushes = brushes.filter(b => b.category === 'painting');
+  const drawingBrushes = brushes.filter(b => b.category === 'sketching' || b.category === 'inking');
+  const paintingBrushes = brushes.filter(b => b.category === 'painting' || b.category === 'airbrushing');
   const customBrushes = allBrushes.filter(b => b.category === 'custom' || !b.isBuiltIn);
   
   // Get favorite brushes from the brush list

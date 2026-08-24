@@ -66,23 +66,27 @@ export const ImportDialog = ({
     if (files && files.length > 0) {
       handleFile(files[0]);
     }
+    // Reset so cancelling and re-picking the SAME file fires change again.
+    e.target.value = '';
   }, [handleFile]);
   
   const handleImport = useCallback(() => {
     if (!previewFile) return;
-    
-    // Regenerate layer IDs to avoid conflicts
+
+    // Regenerate layer IDs to avoid conflicts, preserving which layer was
+    // active in the file (previously imports always landed on the BOTTOM
+    // layer, so the first stroke went behind everything).
+    const { layers: newLayers, idMap } = regenerateLayerIds(previewFile.layers);
+    const mappedActiveId = idMap.get(previewFile.activeLayerId);
     const fileWithNewIds: EverdrawFile = {
       ...previewFile,
-      layers: regenerateLayerIds(previewFile.layers),
-      activeLayerId: '', // Will be set to first layer
+      layers: newLayers,
+      activeLayerId:
+        mappedActiveId ??
+        newLayers[newLayers.length - 1]?.id ??
+        '',
     };
-    
-    // Set active layer to first layer
-    if (fileWithNewIds.layers.length > 0) {
-      fileWithNewIds.activeLayerId = fileWithNewIds.layers[0].id;
-    }
-    
+
     onImport(fileWithNewIds);
     toast.success(`Imported "${previewFile.metadata.name}"`);
     onOpenChange(false);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { CustomBrushPreset, createDefaultPreset, PRESSURE_CURVE_PRESETS } from '@/types/customBrush';
 
 const STORAGE_KEY = 'brush-library';
@@ -93,84 +93,74 @@ const BUILT_IN_PRESETS: CustomBrushPreset[] = [
   }),
 ];
 
+/**
+ * Module-level store shared by every useBrushLibrary() consumer. Previously
+ * each call site (BrushPicker, BrushStudio, DrawingApp, mobile sheet) held
+ * its own copy hydrated once from localStorage, so brushes saved in Brush
+ * Studio never appeared in the pickers until a full reload.
+ */
+interface BrushLibraryState {
+  customBrushes: CustomBrushPreset[];
+  favoriteBrushes: string[];
+  recentBrushes: string[];
+}
+
+// Each key parses independently: one corrupt entry must not wipe the others.
+const loadKey = <T,>(key: string, fallback: T): T => {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? (JSON.parse(stored) as T) : fallback;
+  } catch (error) {
+    console.error(`Failed to load ${key}:`, error);
+    return fallback;
+  }
+};
+
+const persistKey = (key: string, value: unknown): void => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error(`Failed to save ${key}:`, error);
+  }
+};
+
+let libraryState: BrushLibraryState = {
+  customBrushes: loadKey<CustomBrushPreset[]>(STORAGE_KEY, []),
+  favoriteBrushes: loadKey<string[]>(FAVORITES_KEY, []),
+  recentBrushes: loadKey<string[]>(RECENT_KEY, []),
+};
+
+const listeners = new Set<() => void>();
+
+const updateLibrary = (partial: Partial<BrushLibraryState>): void => {
+  libraryState = { ...libraryState, ...partial };
+  if (partial.customBrushes) persistKey(STORAGE_KEY, libraryState.customBrushes);
+  if (partial.favoriteBrushes) persistKey(FAVORITES_KEY, libraryState.favoriteBrushes);
+  if (partial.recentBrushes) persistKey(RECENT_KEY, libraryState.recentBrushes);
+  listeners.forEach(listener => listener());
+};
+
+const subscribe = (listener: () => void): (() => void) => {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+};
+
+const getSnapshot = (): BrushLibraryState => libraryState;
+
 export const useBrushLibrary = () => {
-  const [customBrushes, setCustomBrushes] = useState<CustomBrushPreset[]>([]);
-  const [favoriteBrushes, setFavoriteBrushes] = useState<string[]>([]);
-  const [recentBrushes, setRecentBrushes] = useState<string[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  // Load brushes from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as CustomBrushPreset[];
-        setCustomBrushes(parsed);
-      }
-      
-      const storedFavorites = localStorage.getItem(FAVORITES_KEY);
-      if (storedFavorites) {
-        setFavoriteBrushes(JSON.parse(storedFavorites));
-      }
-      
-      const storedRecent = localStorage.getItem(RECENT_KEY);
-      if (storedRecent) {
-        setRecentBrushes(JSON.parse(storedRecent));
-      }
-    } catch (error) {
-      console.error('Failed to load brush library:', error);
-    }
-    setIsLoaded(true);
-  }, []);
-
-  // Save to localStorage whenever customBrushes changes
-  useEffect(() => {
-    if (isLoaded) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(customBrushes));
-      } catch (error) {
-        console.error('Failed to save brush library:', error);
-      }
-    }
-  }, [customBrushes, isLoaded]);
-
-  // Save favorites to localStorage
-  useEffect(() => {
-    if (isLoaded) {
-      try {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(favoriteBrushes));
-      } catch (error) {
-        console.error('Failed to save favorites:', error);
-      }
-    }
-  }, [favoriteBrushes, isLoaded]);
-
-  // Save recent brushes to localStorage
-  useEffect(() => {
-    if (isLoaded) {
-      try {
-        localStorage.setItem(RECENT_KEY, JSON.stringify(recentBrushes));
-      } catch (error) {
-        console.error('Failed to save recent brushes:', error);
-      }
-    }
-  }, [recentBrushes, isLoaded]);
+  const { customBrushes, favoriteBrushes, recentBrushes } = useSyncExternalStore(subscribe, getSnapshot);
 
   const saveBrush = useCallback((preset: CustomBrushPreset) => {
-    setCustomBrushes(prev => {
-      const existing = prev.findIndex(b => b.id === preset.id);
-      const updated = { ...preset, updatedAt: Date.now() };
-      if (existing >= 0) {
-        const newBrushes = [...prev];
-        newBrushes[existing] = updated;
-        return newBrushes;
-      }
-      return [...prev, updated];
-    });
+    const updated = { ...preset, updatedAt: Date.now() };
+    const existing = libraryState.customBrushes.findIndex(b => b.id === preset.id);
+    const next = existing >= 0
+      ? libraryState.customBrushes.map((b, i) => (i === existing ? updated : b))
+      : [...libraryState.customBrushes, updated];
+    updateLibrary({ customBrushes: next });
   }, []);
 
   const deleteBrush = useCallback((id: string) => {
-    setCustomBrushes(prev => prev.filter(b => b.id !== id));
+    updateLibrary({ customBrushes: libraryState.customBrushes.filter(b => b.id !== id) });
   }, []);
 
   const duplicateBrush = useCallback((preset: CustomBrushPreset): CustomBrushPreset => {
@@ -182,7 +172,7 @@ export const useBrushLibrary = () => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
-    setCustomBrushes(prev => [...prev, duplicate]);
+    updateLibrary({ customBrushes: [...libraryState.customBrushes, duplicate] });
     return duplicate;
   }, []);
 
@@ -200,7 +190,7 @@ export const useBrushLibrary = () => {
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
-      setCustomBrushes(prev => [...prev, imported]);
+      updateLibrary({ customBrushes: [...libraryState.customBrushes, imported] });
       return imported;
     } catch (error) {
       console.error('Failed to import brush:', error);
@@ -208,41 +198,38 @@ export const useBrushLibrary = () => {
     }
   }, []);
 
-  const getAllBrushes = useCallback((): CustomBrushPreset[] => {
-    return [...BUILT_IN_PRESETS, ...customBrushes];
-  }, [customBrushes]);
+  const allBrushes = useMemo(
+    () => [...BUILT_IN_PRESETS, ...customBrushes],
+    [customBrushes]
+  );
 
   const getBrushById = useCallback((id: string): CustomBrushPreset | undefined => {
-    return BUILT_IN_PRESETS.find(b => b.id === id) || customBrushes.find(b => b.id === id);
-  }, [customBrushes]);
+    return BUILT_IN_PRESETS.find(b => b.id === id) || libraryState.customBrushes.find(b => b.id === id);
+  }, []);
 
-  // Favorites management
   const toggleFavorite = useCallback((brushId: string) => {
-    setFavoriteBrushes(prev => {
-      if (prev.includes(brushId)) {
-        return prev.filter(id => id !== brushId);
-      }
-      return [...prev, brushId];
+    const prev = libraryState.favoriteBrushes;
+    updateLibrary({
+      favoriteBrushes: prev.includes(brushId)
+        ? prev.filter(id => id !== brushId)
+        : [...prev, brushId],
     });
   }, []);
 
   const isFavorite = useCallback((brushId: string): boolean => {
-    return favoriteBrushes.includes(brushId);
-  }, [favoriteBrushes]);
+    return libraryState.favoriteBrushes.includes(brushId);
+  }, []);
 
-  // Recent brushes management
   const addToRecent = useCallback((brushId: string) => {
-    setRecentBrushes(prev => {
-      const filtered = prev.filter(id => id !== brushId);
-      return [brushId, ...filtered].slice(0, MAX_RECENT);
-    });
+    const filtered = libraryState.recentBrushes.filter(id => id !== brushId);
+    updateLibrary({ recentBrushes: [brushId, ...filtered].slice(0, MAX_RECENT) });
   }, []);
 
   return {
     customBrushes,
     builtInBrushes: BUILT_IN_PRESETS,
-    allBrushes: getAllBrushes(),
-    isLoaded,
+    allBrushes,
+    isLoaded: true,
     saveBrush,
     deleteBrush,
     duplicateBrush,

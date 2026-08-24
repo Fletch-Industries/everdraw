@@ -32,7 +32,12 @@ export const EraserPicker = ({ isActive, eraserBrush, onActivate, onBrushChange 
 
   const handleSelect = (brush: BrushType) => {
     onBrushChange(brush);
-    onActivate();
+    // Activate only if not already erasing — onActivate is a toggle, and
+    // calling it unconditionally switched the eraser OFF when picking a
+    // style mid-erase.
+    if (!isActive) {
+      onActivate();
+    }
     setOpen(false);
   };
 

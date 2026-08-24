@@ -73,7 +73,7 @@ export const LayerPanelContent = ({
   const handleDragOver = (e: React.DragEvent, layerId: string) => {
     e.preventDefault();
     if (draggedId && draggedId !== layerId) {
-      const rect = (e.target as HTMLElement).getBoundingClientRect();
+      const rect = e.currentTarget.getBoundingClientRect();
       const centerY = rect.top + rect.height / 2;
       const isMergeZone = Math.abs(e.clientY - centerY) < 10;
       

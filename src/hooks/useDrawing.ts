@@ -1,10 +1,25 @@
 import { useState, useCallback, useRef } from 'react';
-import { BrushType, Point, Stroke, DrawingState, Layer, WetMixSettings, ReferenceImage } from '@/types/drawing';
+import { BrushType, Point, Stroke, DrawingState, Layer, WetMixSettings, ReferenceImage, MixSample } from '@/types/drawing';
 import { CustomBrushPreset } from '@/types/customBrush';
+import { getBrushPreset, presetFromCustomBrush } from '@/utils/brushPresets';
+
+/** Brush settings captured at pointer-down, passed back at commit. */
+export interface StrokeCommitConfig {
+  brush: BrushType;
+  color: string;
+  size: number;
+  opacity: number;
+  customBrushPreset?: CustomBrushPreset;
+  wetMix?: WetMixSettings;
+  isEraser?: boolean;
+}
 
 const MAX_HISTORY = 50;
 
-const generateId = () => Math.random().toString(36).substr(2, 9);
+const generateId = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2, 11) + Date.now().toString(36);
 
 const createDefaultLayer = (): Layer => ({
   id: generateId(),
@@ -34,13 +49,33 @@ export const useDrawing = () => {
       backgroundColor: '#0f0f0f',
       pendingLayerMerge: null,
       activeCustomBrush: null,
-      wetMix: DEFAULT_WET_MIX,
+      wetMix: getBrushPreset('paintbrush').wetMixDefault ?? DEFAULT_WET_MIX,
       referenceImages: [],
     };
   });
 
   // Eraser mode state (separate from drawing state to avoid unnecessary re-renders)
   const [isEraser, setIsEraser] = useState(false);
+
+  // Per-brush wet-mix settings. Paint brushes ship with blending ON via their
+  // preset defaults (previously wet mixing was globally OFF until the user
+  // found the droplet panel); user tweaks are remembered per brush.
+  const wetMixByBrushRef = useRef<Map<string, WetMixSettings>>(new Map());
+
+  const wetMixKeyFor = (brushType: BrushType, custom: CustomBrushPreset | null): string =>
+    brushType === 'custom' && custom ? `custom:${custom.id}` : brushType;
+
+  const defaultWetMixFor = (brushType: BrushType, custom: CustomBrushPreset | null): WetMixSettings => {
+    const preset = brushType === 'custom' && custom
+      ? presetFromCustomBrush(custom)
+      : getBrushPreset(brushType);
+    return preset.wetMixDefault ?? DEFAULT_WET_MIX;
+  };
+
+  const wetMixFor = useCallback((brushType: BrushType, custom: CustomBrushPreset | null): WetMixSettings => {
+    const key = wetMixKeyFor(brushType, custom);
+    return wetMixByBrushRef.current.get(key) ?? defaultWetMixFor(brushType, custom);
+  }, []);
 
   // Track undo/redo availability in state for immediate UI updates
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
@@ -72,7 +107,7 @@ export const useDrawing = () => {
 
   // Check if current brush supports wet mixing
   const supportsWetMix = useCallback((brushType: BrushType) => {
-    return ['paintbrush', 'oil_paint', 'acrylic', 'watercolor'].includes(brushType);
+    return ['paintbrush', 'oil_paint', 'acrylic', 'watercolor', 'soft_pastel'].includes(brushType);
   }, []);
 
   const startStroke = useCallback((point: Point) => {
@@ -104,28 +139,84 @@ export const useDrawing = () => {
     });
   }, []);
 
-  const endStroke = useCallback(() => {
+  /**
+   * Commit the current stroke to the active layer.
+   *
+   * The WebGL canvas accumulates points imperatively (no per-move setState)
+   * and passes the full point list here in one call. The legacy 2D canvas
+   * calls this with no arguments and relies on continueStroke accumulation.
+   * Single-point strokes are kept — a tap paints a dot.
+   */
+  const endStroke = useCallback((points?: Point[], mixSamples?: MixSample[], config?: StrokeCommitConfig) => {
     setState(prev => {
-      if (!prev.currentStroke || prev.currentStroke.points.length < 2) {
+      // The WebGL canvas passes the full stroke config at commit, so no
+      // currentStroke state (and no React render) is needed at pen-down.
+      if (!config && !prev.currentStroke) return prev;
+
+      const strokePoints = points ?? prev.currentStroke?.points ?? [];
+      if (strokePoints.length < 1) {
         return { ...prev, currentStroke: null };
       }
-      
+
+      const committed: Stroke = config
+        ? {
+            points: strokePoints,
+            brush: config.brush,
+            color: config.color,
+            size: config.size,
+            opacity: config.opacity,
+            customBrushPreset: config.customBrushPreset,
+            wetMix: config.wetMix,
+            isEraser: config.isEraser,
+            ...(mixSamples ? { mixSamples } : {}),
+          }
+        : {
+            ...prev.currentStroke!,
+            points: strokePoints,
+            ...(mixSamples ? { mixSamples } : {}),
+          };
+
       const newLayers = prev.layers.map(layer => {
         if (layer.id === prev.activeLayerId) {
           return {
             ...layer,
-            strokes: [...layer.strokes, prev.currentStroke!],
+            strokes: [...layer.strokes, committed],
           };
         }
         return layer;
       });
-      
+
       saveToHistory(newLayers);
       return {
         ...prev,
         layers: newLayers,
         currentStroke: null,
       };
+    });
+  }, [saveToHistory]);
+
+  /**
+   * Commit a paint-bucket fill as an undoable, persistable stroke.
+   * The canvas applies the pixels imperatively; this records the operation.
+   */
+  const commitFill = useCallback((points: Point[], color: string) => {
+    setState(prev => {
+      if (points.length < 1) return prev;
+      const fillStroke: Stroke = {
+        points,
+        brush: 'pen',
+        color,
+        size: 1,
+        opacity: 1,
+        fill: { x: points[0].x, y: points[0].y },
+      };
+      const newLayers = prev.layers.map(layer =>
+        layer.id === prev.activeLayerId
+          ? { ...layer, strokes: [...layer.strokes, fillStroke] }
+          : layer
+      );
+      saveToHistory(newLayers);
+      return { ...prev, layers: newLayers };
     });
   }, [saveToHistory]);
 
@@ -181,7 +272,8 @@ export const useDrawing = () => {
   }, []);
 
   const setBrushSize = useCallback((size: number) => {
-    setState(prev => ({ ...prev, brushSize: size }));
+    const clamped = Math.max(1, Math.min(250, Math.round(size)));
+    setState(prev => ({ ...prev, brushSize: clamped }));
   }, []);
 
   const setBrushOpacity = useCallback((opacity: number) => {
@@ -189,28 +281,39 @@ export const useDrawing = () => {
   }, []);
 
   const setBrushType = useCallback((type: BrushType) => {
-    setState(prev => ({ 
-      ...prev, 
+    setState(prev => ({
+      ...prev,
       brushType: type,
       // Clear custom brush when switching to a built-in type
       activeCustomBrush: type !== 'custom' ? null : prev.activeCustomBrush,
+      // Each brush carries its own wet-mix settings (preset default or the
+      // user's remembered override for that brush).
+      wetMix: wetMixFor(type, type === 'custom' ? prev.activeCustomBrush : null),
     }));
-  }, []);
+  }, [wetMixFor]);
 
   const setActiveCustomBrush = useCallback((preset: CustomBrushPreset | null) => {
-    setState(prev => ({ 
-      ...prev, 
+    setState(prev => ({
+      ...prev,
       brushType: preset ? 'custom' : prev.brushType,
       activeCustomBrush: preset,
+      wetMix: preset ? wetMixFor('custom', preset) : prev.wetMix,
     }));
-  }, []);
+  }, [wetMixFor]);
 
   const setBackgroundColor = useCallback((backgroundColor: string) => {
     setState(prev => ({ ...prev, backgroundColor }));
   }, []);
 
   const setWetMix = useCallback((wetMix: WetMixSettings) => {
-    setState(prev => ({ ...prev, wetMix }));
+    setState(prev => {
+      // Remember the tweak for the current brush.
+      wetMixByBrushRef.current.set(
+        wetMixKeyFor(prev.brushType, prev.activeCustomBrush),
+        wetMix
+      );
+      return { ...prev, wetMix };
+    });
   }, []);
 
   // Layer management
@@ -445,6 +548,7 @@ export const useDrawing = () => {
     continueStroke,
     endStroke,
     cancelStroke,
+    commitFill,
     undo,
     redo,
     clear,

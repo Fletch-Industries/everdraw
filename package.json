@@ -27,17 +27,30 @@
     "blockchain"
   ],
   "type": "module",
+  "overrides": {
+    "authsig": {
+      "@bsv/sdk": "$@bsv/sdk"
+    },
+    "nanoid": "3.3.18"
+  },
   "scripts": {
+    "start": "lars start",
     "dev": "vite",
     "build": "vite build",
+    "build:frontend": "vite build --outDir frontend/build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
+    "test": "vitest run",
+    "verify": "npm run lint && npm test && npm run build",
+    "cars:build": "cars build Babbage",
+    "predeploy": "cars project ensure-balance Babbage --min 1 --topup-to 250000",
+    "deploy": "cars release now Babbage",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@bsv/identity-react": "^1.1.10",
-    "@bsv/sdk": "^1.9.30",
-    "@bsv/uhrp-react": "^1.0.4",
+    "@bsv/identity-react": "^1.1.14",
+    "@bsv/sdk": "^2.3.0",
+    "@bsv/uhrp-react": "^1.0.6",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -84,7 +97,7 @@
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.61.1",
     "react-resizable-panels": "^2.1.9",
-    "react-router-dom": "^6.30.1",
+    "react-router-dom": "^7.18.2",
     "recharts": "^2.15.4",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
@@ -94,6 +107,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@p2ppsr/cars-cli": "^1.2.32",
+    "@p2ppsr/lars": "^1.5.12",
     "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.23",
@@ -104,11 +119,11 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
-    "lovable-tagger": "^1.1.13",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^4.1.11"
   }
 }

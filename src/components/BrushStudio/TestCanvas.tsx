@@ -67,18 +67,21 @@ export const TestCanvas = ({ preset, size }: TestCanvasProps) => {
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDrawingRef.current) return;
-    
+
     const point = getPoint(e);
     pointsRef.current.push(point);
-    
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     if (pointsRef.current.length >= 2) {
-      // Use white color (#FFFFFF) for test canvas
-      renderCustomBrush(ctx, pointsRef.current, '#FFFFFF', size, preset);
+      // Render only the newest segment — re-stamping the whole accumulated
+      // stroke every move made low-opacity brushes converge to solid white
+      // (and cost O(n²)).
+      const segment = pointsRef.current.slice(-3);
+      renderCustomBrush(ctx, segment, '#FFFFFF', size, preset);
     }
   };
 

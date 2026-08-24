@@ -6,6 +6,7 @@ import { useWallet } from '@/contexts/WalletContext';
 import { IdentityCard } from '@bsv/identity-react';
 import { Signature, ExternalLink, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import type { SignedProof } from 'authsig';
 
 interface SignArtworkDialogProps {
   open: boolean;
@@ -22,7 +23,7 @@ export function SignArtworkDialog({ open, onOpenChange, artworkBlob, artworkName
   
   const [step, setStep] = useState<SigningStep>('idle');
   const [progress, setProgress] = useState(0);
-  const [proof, setProof] = useState<any>(null);
+  const [proof, setProof] = useState<SignedProof | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleConnect = async () => {
@@ -71,11 +72,11 @@ export function SignArtworkDialog({ open, onOpenChange, artworkBlob, artworkName
       
       toast.success('Artwork signed and published on-chain!');
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStep('error');
-      setError(err?.message || 'Failed to sign artwork');
+      setError(err instanceof Error ? err.message : 'Failed to sign artwork');
     }
-  }, [client, artworkBlob, artworkName]);
+  }, [client, artworkBlob, artworkName, onSignComplete]);
 
   const handleOpenTransaction = () => {
     if (proof?.onChain?.outpoint) {

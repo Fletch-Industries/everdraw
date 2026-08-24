@@ -32,7 +32,7 @@ const isMobileDevice = () => /iPhone|iPad|iPod|Android/i.test(navigator.userAgen
 // Helper to get touch type (finger vs stylus)
 const getTouchType = (touch: Touch): 'direct' | 'stylus' => {
   // touchType is available on iOS Safari
-  return (touch as any).touchType === 'stylus' ? 'stylus' : 'direct';
+  return (touch as Touch & { touchType?: string }).touchType === 'stylus' ? 'stylus' : 'direct';
 };
 
 // Helper to count only finger touches (not stylus)

@@ -88,8 +88,11 @@ export const BrushStudio = ({
     const a = document.createElement('a');
     a.href = url;
     a.download = `${preset.name.replace(/\s+/g, '-').toLowerCase()}.brush.json`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    // Revoking synchronously can cancel the download in some browsers.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
     toast.success("Brush exported");
   }, [preset, exportBrush]);
 
