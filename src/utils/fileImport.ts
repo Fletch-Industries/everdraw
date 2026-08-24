@@ -144,13 +144,25 @@ export const importEverdrawFile = (file: File): Promise<ImportResult> => {
   });
 };
 
-// Generate new IDs for layers to avoid conflicts when importing
-export const regenerateLayerIds = (layers: Layer[]): Layer[] => {
-  const generateId = () => Math.random().toString(36).substr(2, 9);
-  
-  return layers.map(layer => ({
-    ...layer,
-    id: generateId(),
-    strokes: layer.strokes.map(stroke => ({ ...stroke })),
-  }));
+// Generate new IDs for layers to avoid conflicts when importing.
+// Returns the id mapping so callers can translate activeLayerId.
+export const regenerateLayerIds = (
+  layers: Layer[]
+): { layers: Layer[]; idMap: Map<string, string> } => {
+  const generateId = () =>
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2, 11) + Date.now().toString(36);
+
+  const idMap = new Map<string, string>();
+  const newLayers = layers.map(layer => {
+    const newId = generateId();
+    idMap.set(layer.id, newId);
+    return {
+      ...layer,
+      id: newId,
+      strokes: layer.strokes.map(stroke => ({ ...stroke })),
+    };
+  });
+  return { layers: newLayers, idMap };
 };

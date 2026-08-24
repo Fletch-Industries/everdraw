@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { HexColorPicker } from 'react-colorful';
 import { DraggableColorSwatch } from './DraggableColorSwatch';
 
@@ -15,16 +16,32 @@ const presetColors = [
 ];
 
 export const ColorPicker = ({ color, onChange, recentColors = [], onColorUsed }: ColorPickerProps) => {
+  // Latest picked color, tracked through a ref so the pointer-up commit sees
+  // the final drag value even before the parent re-renders.
+  const latestColorRef = useRef(color);
+
+  // Deliberate selections (preset/recent swatches) commit immediately.
   const handleColorChange = (newColor: string) => {
+    latestColorRef.current = newColor;
     onChange(newColor);
     onColorUsed?.(newColor);
   };
 
   return (
     <div className="glass-panel p-3 animate-fade-in">
-      {/* Color Wheel */}
-      <div className="mb-3">
-        <HexColorPicker color={color} onChange={handleColorChange} />
+      {/* Color Wheel — record to "recent" only on pointer-up, not per drag
+          frame, so one drag doesn't flood all 10 recent-color slots. */}
+      <div
+        className="mb-3"
+        onPointerUp={() => onColorUsed?.(latestColorRef.current)}
+      >
+        <HexColorPicker
+          color={color}
+          onChange={(c) => {
+            latestColorRef.current = c;
+            onChange(c);
+          }}
+        />
       </div>
 
       {/* Current Color Display - also draggable */}

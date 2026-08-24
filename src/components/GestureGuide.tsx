@@ -53,9 +53,6 @@ export const GestureGuide = ({ open, onOpenChange }: GestureGuideProps) => {
           <DialogTitle className="text-lg font-medium text-foreground">
             Touch Gestures
           </DialogTitle>
-          <DialogClose className="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition-colors">
-            <X className="w-5 h-5" />
-          </DialogClose>
         </DialogHeader>
         
         <div className="space-y-3 mt-4">

@@ -53,7 +53,7 @@ export const ZoomControls = ({ transform, onTransformChange, onReset, fitTransfo
       
       <button
         onClick={handleFitToScreen}
-        disabled={isAtFit}
+        disabled={fitTransform ? isAtFit : false}
         className={cn(
           'p-1.5 sm:p-2 rounded-lg transition-all active:scale-95 touch-manipulation',
           isAtFit

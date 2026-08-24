@@ -86,10 +86,15 @@ export function PublishToGalleryDialog({
       const progressInterval = setInterval(() => {
         setProgress(prev => Math.min(prev + 5, 70));
       }, 300);
-      
-      const imageId = await uploadToUHRP(artworkBlob);
-      
-      clearInterval(progressInterval);
+
+      let imageId: string;
+      try {
+        imageId = await uploadToUHRP(artworkBlob);
+      } finally {
+        // A failed upload previously skipped clearInterval, leaving the
+        // progress timer running forever behind the error screen.
+        clearInterval(progressInterval);
+      }
       setProgress(80);
       
       // Step 2: Save metadata to GlobalKVStore
@@ -114,9 +119,9 @@ export function PublishToGalleryDialog({
       onPublishComplete?.(metadata);
       toast.success('Artwork published to decentralized gallery!');
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStep('error');
-      setError(err?.message || 'Failed to publish artwork');
+      setError(err instanceof Error ? err.message : 'Failed to publish artwork');
     }
   }, [artworkBlob, title, description, artist, onPublishComplete]);
 

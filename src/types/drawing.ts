@@ -1,6 +1,13 @@
 import { CustomBrushPreset } from './customBrush';
 
-export type BrushType = 'pencil' | 'pen' | 'paintbrush' | 'charcoal' | 'fountain_pen' | 'oil_paint' | 'acrylic' | 'watercolor' | 'marker' | 'custom';
+export type BrushType =
+  // Original brushes (persisted in saved projects — do not rename)
+  | 'pencil' | 'pen' | 'paintbrush' | 'charcoal' | 'fountain_pen'
+  | 'oil_paint' | 'acrylic' | 'watercolor' | 'marker' | 'custom'
+  // Expanded brush library
+  | 'technical_pen' | 'gel_pen' | 'ink_brush' | 'calligraphy'
+  | 'pencil_6b' | 'crayon' | 'chalk' | 'soft_pastel'
+  | 'airbrush_soft' | 'airbrush_hard' | 'spray_paint' | 'splatter' | 'glow';
 
 // Wet mixing settings for paint brushes (Procreate-style color pickup)
 export interface WetMixSettings {
@@ -21,6 +28,14 @@ export interface Point {
 
 export type InputMode = 'pencil_only' | 'pencil_and_touch';
 
+/** Wet-mix color recorded at a stroke distance, so replay reproduces mixing exactly. */
+export interface MixSample {
+  d: number; // cumulative stroke distance where the color was sampled
+  r: number;
+  g: number;
+  b: number;
+}
+
 export interface Stroke {
   points: Point[];
   brush: BrushType;
@@ -30,6 +45,12 @@ export interface Stroke {
   customBrushPreset?: CustomBrushPreset; // For custom brushes
   wetMix?: WetMixSettings; // Optional wet mixing settings for paint-like brushes
   isEraser?: boolean; // True if this stroke is an eraser (uses destination-out composite)
+  mixSamples?: MixSample[]; // Recorded wet-mix colors for deterministic replay
+  /**
+   * Paint-bucket fill seeded at (x, y) in canvas coordinates. Fill strokes
+   * replay deterministically against the layer content beneath them.
+   */
+  fill?: { x: number; y: number };
 }
 
 export interface Layer {

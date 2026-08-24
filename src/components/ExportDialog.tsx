@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
@@ -26,6 +26,8 @@ interface ExportDialogProps {
   wetMix: WetMixSettings;
   referenceImages: ReferenceImage[];
   sourceCanvas: HTMLCanvasElement | null;
+  /** Renders visible layers with real alpha for background-free export. */
+  getTransparentCanvas?: (() => HTMLCanvasElement | null) | null;
   projectId?: string;
   onExportComplete?: () => void;
 }
@@ -40,6 +42,7 @@ export const ExportDialog = ({
   wetMix,
   referenceImages,
   sourceCanvas,
+  getTransparentCanvas,
   projectId,
   onExportComplete,
 }: ExportDialogProps) => {
@@ -54,8 +57,13 @@ export const ExportDialog = ({
   const [exportedBlob, setExportedBlob] = useState<Blob | null>(null);
   const [exportedFileName, setExportedFileName] = useState<string>('');
   
-  // Calculate estimated file size for everdraw
-  const everdrawSize = estimateEverdrawFileSize(layers, canvasSize, backgroundColor, activeLayerId, wetMix, referenceImages);
+  // Estimate lazily and only while the dialog is open — this JSON-stringifies
+  // every stroke, and running it on every DrawingApp render caused a visible
+  // hitch on each pointer-up.
+  const everdrawSize = useMemo(
+    () => (open ? estimateEverdrawFileSize(layers, canvasSize, backgroundColor, activeLayerId, wetMix, referenceImages) : 0),
+    [open, layers, canvasSize, backgroundColor, activeLayerId, wetMix, referenceImages]
+  );
   
   // Calculate stroke count
   const strokeCount = layers.reduce((acc, layer) => acc + layer.strokes.length, 0);
@@ -83,8 +91,13 @@ export const ExportDialog = ({
     
     setIsExporting(true);
     try {
+      // Background-free export needs the alpha-preserving layer composite —
+      // the live GL canvas is opaque, so it always contains the background.
+      const exportSource = (!includeBackground && getTransparentCanvas)
+        ? getTransparentCanvas() ?? sourceCanvas
+        : sourceCanvas;
       const result = await exportAsImage(
-        sourceCanvas,
+        exportSource,
         { format: imageFormat, includeBackground, quality, scale },
         canvasSize,
         backgroundColor,

@@ -57,7 +57,7 @@ export const QuickSizeSlider = ({
     setIsDragging(false);
   }, [isDragging]);
 
-  const fillPercent = ((size - minSize) / (maxSize - minSize)) * 100;
+  const fillPercent = Math.max(0, Math.min(100, ((size - minSize) / (maxSize - minSize)) * 100));
 
   return (
     <div className="glass-panel p-1.5 flex flex-col items-center gap-1 animate-fade-in">

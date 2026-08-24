@@ -101,9 +101,24 @@ The app will be available at `http://localhost:5173`
 # Create optimized production build
 npm run build
 
+# Run lint, deterministic brush tests, and the production build
+npm run verify
+
 # Preview production build locally
 npm run preview
 ```
+
+The development server also exposes `/brush-lab.html` and
+`/brush-lab.html?diag` as WebGL visual-regression surfaces for the built-in
+brush library.
+
+## Production Deployment
+
+The public Open BSV source on `master` is the production source of truth.
+Pushes to `master` run the repository's GitHub Actions workflow, verify the
+release candidate, build a frontend-only CARS artifact, and deploy it to the
+Babbage CARS cloud. The deployment identity is stored only as the repository
+secret `CARS_PRIVATE_KEY`.
 
 ## Documentation
 

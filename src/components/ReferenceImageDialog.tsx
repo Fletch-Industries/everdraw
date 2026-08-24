@@ -210,7 +210,7 @@ export const ReferenceImageDialog = ({
           <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
-          <Button onClick={handleImport} disabled={!preview}>
+          <Button onClick={handleImport} disabled={!preview || !imageSize}>
             Import
           </Button>
         </DialogFooter>

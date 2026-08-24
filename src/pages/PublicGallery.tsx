@@ -19,9 +19,9 @@ const PublicGallery = () => {
     try {
       const data = await artworkStore.getAllArtworks();
       setArtworks(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading artworks:', err);
-      setError(err?.message || 'Failed to load artworks');
+      setError(err instanceof Error ? err.message : 'Failed to load artworks');
     } finally {
       setIsLoading(false);
     }

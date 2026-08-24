@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,18 @@ export const CanvasSizeDialog = ({
   const [dpi, setDpi] = useState(currentSize.dpi);
   const [aspectLocked, setAspectLocked] = useState(false);
   const [aspectRatio, setAspectRatio] = useState(currentSize.width / currentSize.height);
+
+  // Sync fields to the ACTUAL canvas size each time the dialog opens — the
+  // component mounts once, so state initializers alone showed (and applied!)
+  // the size from app-mount time, not the loaded project's size.
+  useEffect(() => {
+    if (open) {
+      setWidth(currentSize.width);
+      setHeight(currentSize.height);
+      setDpi(currentSize.dpi);
+      setAspectRatio(currentSize.width / currentSize.height);
+    }
+  }, [open, currentSize]);
 
   // Calculate physical size in inches
   const physicalSize = useMemo(() => ({
@@ -75,7 +87,14 @@ export const CanvasSizeDialog = ({
   };
 
   const handleApply = () => {
-    onSizeChange({ width, height, dpi });
+    // Clamp: an emptied field parses to 0 and would create a 0-px canvas.
+    const clamp = (v: number, lo: number, hi: number) =>
+      Number.isFinite(v) ? Math.max(lo, Math.min(hi, Math.round(v))) : lo;
+    onSizeChange({
+      width: clamp(width, 1, 16384),
+      height: clamp(height, 1, 16384),
+      dpi: clamp(dpi, 1, 1200),
+    });
     onOpenChange(false);
   };
 

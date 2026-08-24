@@ -1,3 +1,5 @@
+import type { GlobalKVStore as GlobalKVStoreType, WalletClient as WalletClientType } from '@bsv/sdk';
+
 // Protocol ID - must use letters, numbers, and spaces only
 const ARTWORK_PROTOCOL_ID: [0 | 1 | 2, string] = [1, 'everdraw gallery'];
 
@@ -18,8 +20,8 @@ export interface ArtworkMetadata {
 }
 
 // Lazy-loaded SDK modules (prevents React context errors)
-let GlobalKVStore: any;
-let WalletClient: any;
+let GlobalKVStore: typeof import('@bsv/sdk').GlobalKVStore;
+let WalletClient: typeof import('@bsv/sdk').WalletClient;
 
 async function loadSDK() {
   if (!GlobalKVStore || !WalletClient) {
@@ -30,8 +32,8 @@ async function loadSDK() {
 }
 
 class ArtworkStore {
-  private kv: any = null;
-  private wallet: any = null;
+  private kv: GlobalKVStoreType | null = null;
+  private wallet: WalletClientType | null = null;
   private initialized = false;
 
   async initialize(): Promise<void> {

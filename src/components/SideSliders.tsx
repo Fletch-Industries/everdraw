@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react';
+import type { CSSProperties } from 'react';
 import { cn } from '@/lib/utils';
 
 interface SideSlidersProps {
@@ -121,7 +122,7 @@ export const SideSliders = ({
   horizontal = false,
 }: SideSlidersProps) => {
   // Convert to 0-100 range for display
-  const sizePercent = ((brushSize - 2) / 98) * 100;
+  const sizePercent = Math.max(0, Math.min(100, ((brushSize - 2) / 98) * 100));
   const opacityPercent = brushOpacity * 100;
 
   const handleSizeChange = (percent: number) => {
@@ -187,9 +188,8 @@ export const SideSliders = ({
                 [&::-moz-range-thumb]:border-foreground
                 [&::-moz-range-thumb]:shadow-lg"
               style={{
-                // @ts-ignore - Setting thumb color
                 '--thumb-bg': activeColor,
-              }}
+              } as CSSProperties}
             />
           </div>
           <span className="text-xs text-muted-foreground font-mono w-8 text-right">{brushSize}</span>
